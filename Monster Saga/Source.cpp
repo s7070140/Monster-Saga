@@ -4,9 +4,18 @@
 #include <SDL_mixer.h>
 #include <SDL_ttf.h>
 #include <sstream>
+#include <stdlib.h>
 
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 600;
+
+
+
+void init();
+void loadMedia();
+void close();
+void game();
+int random(int, int);
 
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
@@ -14,43 +23,24 @@ TTF_Font* font;
 
 class Texture
 {
-	public:
-		Texture();
-		void loadFile(std::string path);
-		void free();
-		void render(int, int, SDL_Rect*);
-		void loadText(std::string text, SDL_Color textColor);
-		int get_width();
-		int get_height();
-		int get_x();
-		int get_y();
-		SDL_Texture* get_texture();
-	private:
-		SDL_Texture* media;
-		int width;
-		int height;
-		int numX;
-		int numY;
+public:
+	Texture();
+	void loadFile(std::string path);
+	void free();
+	void render(int, int, SDL_Rect*);
+	void loadText(std::string text, SDL_Color textColor);
+	int get_width();
+	int get_height();
+	int get_x();
+	int get_y();
+	SDL_Texture* get_texture();
+private:
+	SDL_Texture* media;
+	int width;
+	int height;
+	int numX;
+	int numY;
 };
-class Character
-{
-	public:
-		const int CHAR_WIDTH = 120;
-		const int CHAR_HEIGHT = 80;
-
-		Character();
-		void eventKey(SDL_Event e);
-		void move();
-		void render(SDL_Rect* clip = NULL);
-		void media(Texture);
-	private:
-		Texture texture;
-		int posX;
-		int posY;
-		int conX;
-		int conY;
-};
-
 Texture::Texture()
 {
 	media = NULL;
@@ -59,6 +49,7 @@ Texture::Texture()
 }
 void Texture::loadFile(std::string path)
 {
+	free();
 	SDL_Surface* surface = IMG_Load(path.c_str());
 	media = SDL_CreateTextureFromSurface(renderer, surface);
 	width = surface->w;
@@ -89,7 +80,8 @@ void Texture::render(int x, int y, SDL_Rect* clip)
 }
 void Texture::loadText(std::string text, SDL_Color textColor)
 {
-	SDL_Surface* textSurface = TTF_RenderText_Solid(font, text.c_str(), textColor);
+	free();
+	SDL_Surface* textSurface = TTF_RenderText_Blended(font, text.c_str(), textColor);
 	media = SDL_CreateTextureFromSurface(renderer, textSurface);
 	width = textSurface->w;
 	height = textSurface->h;
@@ -116,63 +108,111 @@ SDL_Texture* Texture::get_texture()
 	return media;
 }
 
-Texture nyan;
-
-Character::Character()
-{
-	posX = 0;
-	posY = SCREEN_HEIGHT / 2;
-	conX = 0;
-	conY = 0;
-}
-void Character::media(Texture img)
-{
-	texture = img;
-}
-void Character::eventKey(SDL_Event e)
-{
-	if (e.type == SDL_KEYDOWN && e.key.repeat == 0)
-	{
-		switch (e.key.keysym.sym)
-		{
-			case SDLK_UP: conY -= 10; break;
-			case SDLK_DOWN: conY += 10; break;
-			case SDLK_LEFT: conX -= 10; break;
-			case SDLK_RIGHT: conX += 10; break;
-		}
-	}
-	else if (e.type == SDL_KEYUP && e.key.repeat == 0)
-	{
-		switch (e.key.keysym.sym)
-		{
-			case SDLK_UP: conY += 10; break;
-			case SDLK_DOWN: conY -= 10; break;
-			case SDLK_LEFT: conX += 10; break;
-			case SDLK_RIGHT: conX -= 10; break;
-		}
-	}
-}
-void Character::move()
-{
-	posX += conX;
-	if (posX < 0 || posX + CHAR_WIDTH > SCREEN_WIDTH)
-		posX -= conX;
-	posY += conY;
-	if (posY < 0 || posY + CHAR_HEIGHT > SCREEN_HEIGHT)
-		posY -= conY;
-}
-void Character::render(SDL_Rect* clip)
-{
-	nyan.render(posX, posY, clip);
-}
-
-void init();
-void loadMedia();
-void close();
-void game();
 Texture background;
-Texture text;
+
+class Background
+{
+public:
+	Background();
+	void move(int);
+	void stop();
+	void render();
+	int get_speed();
+private:
+	int x;
+	int count;
+	int speed;
+	bool check;
+	int current;
+};
+Background::Background()
+{
+	x = 0;
+	count = 0;
+	speed = 1;
+	check = false;
+	current = 0;
+}
+void Background::move(int time)
+{
+	if (time % 60 == 0 && !check && time != 0)
+	{
+		speed++;
+		check = true;
+		current = time;
+	}
+	if (time - current >= 1)
+		check = false;
+	if (speed > 5)
+		speed = 5;
+	if (x <= -SCREEN_WIDTH)
+		x = 0;
+	if (count % 6 == 0 && count != 0)
+		x -= speed;
+	count++;
+}
+void Background::render()
+{
+	background.render(x, 0, NULL);
+}
+int Background::get_speed()
+{
+	return speed;
+}
+
+Texture nyan;
 SDL_Rect sprite[6];
+
+class Monster
+{
+public:
+	Monster();
+	void eventKey();
+	void move();
+	void render();
+private:
+	int posX;
+	int posY;
+	int conY;
+	int count;
+	int current;
+};
+Monster::Monster()
+{
+	posX = (SCREEN_WIDTH / 2) / 2;
+	posY = SCREEN_HEIGHT / 2;
+	conY = 0;
+	count = 0;
+	current = 0;
+}
+void Monster::eventKey()
+{
+	const Uint8* keyState = SDL_GetKeyboardState(NULL);
+	if (keyState[SDL_SCANCODE_SPACE] && count % 5 == 0)
+		conY -= 2;
+	else if (count % 10 == 0)
+		conY += 2;
+}
+void Monster::move()
+{
+	if (count % 25 == 0)
+		current++;
+	posY += conY;
+	if (posY <= 0 || posY + nyan.get_height() >= SCREEN_HEIGHT)
+		posY -= conY;
+	conY = 0;
+	if (current > 6)
+		current = 0;
+}
+void Monster::render()
+{
+	nyan.render(posX, posY, &sprite[current % 6]);
+	count++;
+}
+
+Texture text;
+Texture object;
+SDL_Rect objSprite[10];
 Mix_Music *music;
 
 void init()
@@ -188,13 +228,21 @@ void loadMedia()
 {
 	background.loadFile("Image Stuff/background.png");
 	nyan.loadFile("Image Stuff/nyan-cat.png");
+	//object.loadFile("Image Stuff/object.png");
 	music = Mix_LoadMUS("Sound/nyan_cat.mp3");
 	font = TTF_OpenFont("Simply Rounded.ttf", 28);
-	int i, num = 0;
+	int i, num = 0, height = 75;
 	for (i = 0; i < 6; i++)
 	{
 		sprite[i] = { num, 0, 120, 80 };
 		num += 120;
+	}
+	num = 0;
+	for (i = 0; i < 8; i++)
+	{
+		objSprite[i] = { num, 0, 100, height };
+		height += 75;
+		num += 100;
 	}
 }
 void close()
@@ -217,47 +265,45 @@ void game()
 {
 	SDL_Event e;
 	bool quit = false;
-	int x = 0;
-	int rect = 0;
-	int x_nyan = 0, y_nyan = SCREEN_HEIGHT / 2;
-	Character nyan_cat;
-	std::stringstream time;
+	Background bg;
+	Monster mon;
 	SDL_Color color = { 255, 255, 255 };
+	int rect = 0;
+
 	while (!quit)
 	{
-		int currentTime = SDL_GetTicks() / 1000;
+		Uint32 time = SDL_GetTicks() / 1000;
 		while (SDL_PollEvent(&e) != 0)
 		{
 			if (e.type == SDL_QUIT)
 				quit = true;
-			nyan_cat.eventKey(e);
 		}
-		if (x == -SCREEN_WIDTH)
-		{
-			x = 0;
-		}
+		mon.eventKey();
+		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+		SDL_RenderClear(renderer);
+
 		if (Mix_PlayingMusic() == 0)
 			Mix_PlayMusic(music, -1);
-		time.str("");
-		time << "Time : " << currentTime;
-		text.loadText(time.str().c_str(), color);
-		background.render(x, 0, NULL);
-		nyan_cat.move();
-		nyan_cat.render(&sprite[rect % 6]);
+
+		text.loadText(std::to_string(time), color);
+		bg.move(time);
+		mon.move();
+
+		bg.render();
+		mon.render();
 		text.render(SCREEN_WIDTH - text.get_width(), 0, NULL);
 		SDL_RenderPresent(renderer);
-		if (x % 5 == -1)
-			rect++;
-		if (rect > 6)
-			rect = 0;
-		x--;
-		SDL_Delay(10);
 	}
+}
+
+int random(int min, int max)
+{
+	return rand() % (max - min + 1) + min;
 }
 
 int main(int argc, char* args[])
 {
-	init(); 
+	init();
 	loadMedia();
 	game();
 	close();
