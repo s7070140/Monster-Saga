@@ -8,11 +8,14 @@
 
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 600;
+bool startGame = false;
+int currentTime;
 
 void init();
 void loadMedia();
 void close();
-void game();
+bool home();
+bool game(int);
 int random(int, int);
 bool checkOverlap(SDL_Rect, SDL_Rect);
 int newRan(int);
@@ -27,7 +30,7 @@ public:
 	Texture();
 	void loadFile(std::string path);
 	void free();
-	void render(int, int, SDL_Rect*);
+	void render(int, int, SDL_Rect* clip = NULL);
 	void loadText(std::string text, SDL_Color textColor);
 	int get_width();
 	int get_height();
@@ -317,7 +320,204 @@ bool Object::isCrash()
 
 
 Texture text;
-Mix_Music* music;
+Texture press_text;
+Texture menuText;
+Texture logo;
+Texture startButton;
+Texture scoreButton;
+Texture helpButton;
+Texture exitButton;
+Texture bgBoard;
+Texture helpBoard;
+Texture closeButton;
+SDL_Rect buttonClip[3];
+SDL_Rect closeClip[3];
+SDL_Rect pressRect[5];
+Mix_Music* music = NULL;
+Mix_Chunk* mouseIn = NULL;
+Mix_Chunk* mousePress = NULL;
+
+class Button
+{
+	public:
+		Button();
+		void loadButton(Texture);
+		int stateButton(SDL_Event*);
+		void moveIn();
+		void moveOut();
+		void render(int);
+		void renderClose();
+		void renderMenu();
+	private:
+		Texture button;
+		int left, right;
+		int top, low;
+		int appear;
+		int state;
+		int closeB;
+		bool inside_sound;
+		bool press_sound;
+};
+Button::Button()
+{
+	left = 0, right = 0;
+	top = 0, low = 0;
+	appear = -400;
+	state = 0;
+	closeB = 0;
+	inside_sound = false;
+	press_sound = false;
+}
+void Button::loadButton(Texture pButton)
+{
+	button = pButton;
+}
+int Button::stateButton(SDL_Event *e)
+{
+	bool inside = true;
+	int numberButton = 0;
+
+	if (e->type == SDL_MOUSEMOTION || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEBUTTONUP)
+	{
+		int mouseX, mouseY;
+		SDL_GetMouseState(&mouseX, &mouseY);
+		if (mouseX < left || mouseX > right)
+			inside = false;
+		else if (mouseY < top || mouseY > low)
+			inside = false;
+	}
+	if (!inside)
+	{
+		state = 0;
+		inside_sound = false;
+		press_sound = false;
+	}
+	else
+	{
+		switch (e->type)
+		{
+			case SDL_MOUSEMOTION:
+			{
+				if (!inside_sound)
+				{
+					Mix_PlayChannel(-1, mouseIn, 0);
+					inside_sound = true;
+				}
+				state = 1;
+				break;
+			}
+			case SDL_MOUSEBUTTONDOWN:
+			{
+				if (!press_sound)
+				{
+					Mix_PlayChannel(-1, mousePress, 0);
+					press_sound = true;
+				}
+				state = 2;
+				break;
+			}
+			case SDL_MOUSEBUTTONUP:
+			{
+				state = 1;
+				if (top == 150)
+					return 1;
+				else if (top == 250)
+					return 2;
+				else if (top == 350)
+					return 3;
+				else if (top == 450)
+					return 4;
+				else if (low == button.get_y() + closeButton.get_height() / 3)
+					return 5;
+				break;
+			}
+		}
+	}
+}
+void Button::moveIn()
+{
+	appear += 5;
+	closeB += 5;
+	if (appear > 50)
+	{
+		appear = 50;
+		left = button.get_x(), right = button.get_x() + button.get_width();
+		top = button.get_y(), low = button.get_y() + 75;
+	}
+	if (closeB > bgBoard.get_width() + button.get_width() / 2)
+	{
+		closeB = bgBoard.get_width() + button.get_width() / 2;
+		left = button.get_x(), right = button.get_x() + button.get_width();
+		top = button.get_y(), low = button.get_y() + closeButton.get_height() / 3;
+	}
+}
+void Button::moveOut()
+{
+	appear -= 5;
+	closeB -= 5;
+	if (appear <= -475)
+	{
+		appear = -475;
+		left = button.get_x(), right = button.get_x() + button.get_width();
+		top = button.get_y(), low = button.get_y() + 75;
+	}
+	if (closeB <= -button.get_width())
+	{
+		closeB = -button.get_width();
+		left = button.get_x(), right = button.get_x() + button.get_width();
+		top = button.get_y(), low = button.get_y() + closeButton.get_height() / 3;
+	}
+}
+void Button::render(int y)
+{
+	button.render(200, appear + y, &buttonClip[state]);
+}
+void Button::renderClose()
+{
+	button.render(closeB - closeButton.get_width(), 100 - (closeButton.get_height() / 3) / 2, &closeClip[state]);
+}
+void Button::renderMenu()
+{
+	button.render(300, appear);
+}
+
+class Board
+{
+	public:
+		Board();
+		void get_board(Texture);
+		void moveIn();
+		void moveOut();
+		void render();
+	private:
+		Texture board;
+		int appear;
+};
+Board::Board()
+{
+	appear = 0;
+}
+void Board::get_board(Texture pBoard)
+{
+	board = pBoard;
+	appear = -board.get_width() - closeButton.get_width() - 15;
+}
+void Board::moveIn()
+{
+	appear += 5;
+	if (appear >= 0)
+		appear = 0;
+}
+void Board::moveOut()
+{
+	appear -= 5;
+	if (appear <= -board.get_width() - closeButton.get_width() - 15)
+		appear = -board.get_width() - closeButton.get_width() - 15;
+}
+void Board::render()
+{
+	board.render(appear, 100);
+}
 
 void init()
 {//initialize
@@ -333,8 +533,22 @@ void loadMedia()
 	background.loadFile("Image Stuff/background.png");
 	nyan.loadFile("Image Stuff/nyan-cat.png");
 	objectA.loadFile("Image Stuff/wall.png");
+	press_text.loadFile("Image Stuff/press_text.png");
 	music = Mix_LoadMUS("Sound/nyan_cat.mp3");
 	font = TTF_OpenFont("Simply Rounded.ttf", 28);
+	logo.loadFile("Image Stuff/logo.png");
+	menuText.loadFile("Image Stuff/menu.png");
+	startButton.loadFile("Image Stuff/startButton.png");
+	scoreButton.loadFile("Image Stuff/scoreButton.png");
+	helpButton.loadFile("Image Stuff/helpButton.png");
+	exitButton.loadFile("Image Stuff/exitButton.png");
+	bgBoard.loadFile("Image Stuff/bgBoard.png");
+	closeButton.loadFile("Image Stuff/closeButton.png");
+	bgBoard.loadFile("Image Stuff/bgBoard.png");
+	helpBoard.loadFile("Image Stuff/helpBoard.png");
+	mouseIn = Mix_LoadWAV("Sound/01_inside.wav");
+	mousePress = Mix_LoadWAV("Sound/02_press.wav");
+
 	int i, num = 0;
 	for (i = 0; i < 6; i++)
 	{
@@ -345,6 +559,27 @@ void loadMedia()
 	objSprite[1] = { 200, 0, 100, 250 };
 	objSprite[2] = { 400, 0, 100, 200 };
 	objSprite[3] = { 600, 0, 100, 100 };
+
+	num = 0;
+	for (i = 0; i < 5; i++)
+	{
+		pressRect[i] = { 0, num, 450, 25 };
+		num += 25;
+	}
+	
+	num = 0;
+	for (i = 0; i < 3; i++)
+	{
+		buttonClip[i] = { 0, num, startButton.get_width(), 75 };
+		num += 75;
+	}
+
+	num = 0;
+	for (i = 0; i < 3; i++)
+	{
+		closeClip[i] = { 0, num, closeButton.get_width(), closeButton.get_height() / 3 };
+		num += closeButton.get_height() / 3;
+	}
 }
 void close()
 {//close and clear all
@@ -352,18 +587,175 @@ void close()
 	nyan.free();
 	text.free();
 	objectA.free();
+	logo.free();
+	menuText.free();
+	startButton.free();
+	scoreButton.free();
+	helpButton.free();
+	exitButton.free();
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	TTF_CloseFont(font);
+	Mix_FreeChunk(mouseIn);
+	Mix_FreeChunk(mousePress);
 	font = NULL;
 	window = NULL;
 	renderer = NULL;
+	mouseIn = NULL;
+	mousePress = NULL;
 	SDL_Quit();
 	IMG_Quit();
 	Mix_Quit();
 	TTF_Quit();
 }
-void game()
+bool home()
+{
+	bool quit = false;
+	SDL_Event e;
+	const Uint8* key = SDL_GetKeyboardState(NULL);
+
+	Button menu;
+	Button start;
+	Button score;
+	Button help;
+	Button exit;
+	Button close;
+	Board highScore;
+	Board howToPlay;
+	menu.loadButton(menuText);
+	start.loadButton(startButton);
+	score.loadButton(scoreButton);
+	help.loadButton(helpButton);
+	exit.loadButton(exitButton);
+	close.loadButton(closeButton);
+	highScore.get_board(bgBoard);
+	howToPlay.get_board(helpBoard);
+
+	int count = 0, x = 0, rect = 0;
+	int time;
+	bool checkScore = false;
+	bool checkHelp = false;
+
+	while (!quit)
+	{
+		currentTime = SDL_GetTicks() / 1000;
+		while (SDL_PollEvent(&e) != 0)
+		{
+			if (e.type == SDL_QUIT)
+			{
+				quit = true;
+				return false;
+			}
+			else if (e.type == SDL_KEYDOWN)
+				startGame = true;
+		}
+		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF); //reset screen
+		SDL_RenderClear(renderer);
+
+		background.render(x, 0, NULL);
+
+		if (!startGame)
+		{
+			logo.render(SCREEN_WIDTH / 2 - logo.get_width() / 2, (SCREEN_HEIGHT / 2) / 2, NULL);
+			press_text.render(SCREEN_WIDTH / 2 - press_text.get_width() / 2, 450, &pressRect[rect]);
+		}
+		else
+		{
+			int num1 = 0, num2 = 0, num3 = 0, num4 = 0, num5 = 0;
+			if (!checkScore && !checkHelp)
+			{
+				num1 = start.stateButton(&e);
+				num2 = score.stateButton(&e);
+				num3 = help.stateButton(&e);
+				num4 = exit.stateButton(&e);
+
+				menu.moveIn();
+				start.moveIn();
+				score.moveIn();
+				help.moveIn();
+				exit.moveIn();
+				highScore.moveOut();
+				close.moveOut();
+				howToPlay.moveOut();
+			}
+			else if (checkScore && !checkHelp)
+			{
+				if (key[SDL_SCANCODE_ESCAPE])
+				{
+					checkScore = false;
+					checkHelp = false;
+				}
+				num5 = close.stateButton(&e);
+
+				menu.moveOut();
+				start.moveOut();
+				score.moveOut();
+				help.moveOut();
+				exit.moveOut();
+				highScore.moveIn();
+				close.moveIn();
+			}
+			else if (!checkScore && checkHelp)
+			{
+				if (key[SDL_SCANCODE_ESCAPE])
+				{
+					checkScore = false;
+					checkHelp = false;
+				}
+				num5 = close.stateButton(&e);
+
+				menu.moveOut();
+				start.moveOut();
+				score.moveOut();
+				help.moveOut();
+				exit.moveOut();
+				howToPlay.moveIn();
+				close.moveIn();
+			}
+			menu.renderMenu();
+			start.render(100);
+			score.render(200);
+			help.render(300);
+			exit.render(400);
+			highScore.render();
+			howToPlay.render();
+			close.renderClose();
+
+			//check click button
+			if (num1 == 1)
+				quit = true;
+			else if (num2 == 2)
+				checkScore = true;
+			else if (num3 == 3)
+				checkHelp = true;
+			else if (num4 == 4)
+			{
+				quit = true;
+				return false;
+			}
+			else if (num5 == 5)
+			{
+				checkScore = false;
+				checkHelp = false;
+			}
+		}
+
+		SDL_RenderPresent(renderer);
+
+
+		if (x <= -SCREEN_WIDTH)
+			x = 0;
+		if (count % 10 == 0)
+			x--;
+		count++;
+		if (count % 75 == 0)
+			rect++;
+		if (rect > 4)
+			rect = 0;
+	}
+	return true;
+}
+bool game(int oldTime)
 {
 	SDL_Event e;
 	bool quit = false;
@@ -374,11 +766,14 @@ void game()
 
 	while (!quit)
 	{
-		Uint32 time = SDL_GetTicks() / 1000;
+		Uint32 time = SDL_GetTicks() / 1000 - oldTime;
 		while (SDL_PollEvent(&e) != 0)
 		{
 			if (e.type == SDL_QUIT)
+			{
 				quit = true;
+				return false;
+			}
 		}
 		mon.eventKey();
 		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF); //reset screen
@@ -399,8 +794,12 @@ void game()
 		SDL_RenderPresent(renderer);
 
 		if (obj.isCrash())
+		{
 			quit = true;
+			Mix_HaltMusic();
+		}
 	}
+	return true;
 }
 
 int random(int min, int max)
@@ -424,10 +823,16 @@ bool checkOverlap(SDL_Rect a, SDL_Rect b)
 
 int main(int argc, char* args[])
 {
+	bool quit = false;
 	init();
 	loadMedia();
-	game();
+	while (!quit)
+	{
+		if (!home())
+			quit = true;
+		else if (!game(currentTime))
+			quit = true;
+	}
 	close();
 	return 0;
-
 }

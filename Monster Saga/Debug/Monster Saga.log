@@ -1,8 +1,10 @@
-﻿Build started 20/3/2558 20:49:56.
+﻿Build started 24/3/2558 23:03:46.
      1>Project "C:\Users\adisorn\Desktop\Monster-Saga\Monster Saga\Monster Saga.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt Source.cpp
          Source.cpp
+     1>c:\users\adisorn\desktop\monster-saga\monster saga\source.cpp(635): warning C4101: 'time' : unreferenced local variable
+     1>c:\users\adisorn\desktop\monster-saga\monster saga\source.cpp(436): warning C4715: 'Button::stateButton' : not all control paths return a value
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\adisorn\Desktop\Monster-Saga\Debug\Monster Saga.exe" /INCREMENTAL /NOLOGO SDL2.lib SDL2main.lib SDL2_image.lib SDL2_ttf.lib SDL2_mixer.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\adisorn\Desktop\Monster-Saga\Debug\Monster Saga.pdb" /SUBSYSTEM:WINDOWS /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\adisorn\Desktop\Monster-Saga\Debug\Monster Saga.lib" /MACHINE:X86 Debug\Source.obj
          Monster Saga.vcxproj -> C:\Users\adisorn\Desktop\Monster-Saga\Debug\Monster Saga.exe
@@ -10,4 +12,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:05.02
+Time Elapsed 00:00:02.39
